@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#F5F5F4">
+<title>次の休みまでカウントダウン - あと何時間で休み？</title>
+<meta name="description" content="次の土日・祝日まで、残り日数・営業時間を秒刻みで可視化。2026-2027年の日本の祝日を内蔵。">
+<meta property="og:title" content="次の休みまでカウントダウン">
+<meta property="og:description" content="あと何時間で休み？">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #F5F5F4;
+  --surface: #FFFFFF;
+  --surface-2: #EFEEEC;
+  --surface-3: #E7E5E4;
+  --border: #D6D3D1;
+  --border-strong: #A8A29E;
+  --text: #0A0A0A;
+  --text-2: #262626;
+  --dim: #57534E;
+  --dim-2: #78716C;
+  --primary: #0A0A0A;
+  --accent: #0A0A0A;
+  --success: #047857;
+  --danger: #B91C1C;
+  --warning: #B45309;
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-lg: 10px;
+  --shadow-sm: 0 1px 0 rgba(10,10,10,0.04);
+  --shadow: 0 1px 2px rgba(10,10,10,0.04);
+  --shadow-lg: 0 8px 24px -8px rgba(10,10,10,0.12);
+  --duration: 160ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --font-sans: "Inter", "Noto Sans JP", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-num: "JetBrains Mono", "Inter", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --tap: 48px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+[data-theme="dark"] {
+  --bg: #0A0A0A; --surface: #141414; --surface-2: #1A1A1A; --surface-3: #222222;
+  --border: #2A2A2A; --border-strong: #3F3F3F;
+  --text: #FAFAFA; --text-2: #E5E5E5; --dim: #A3A3A3; --dim-2: #737373;
+  --primary: #FAFAFA; --accent: #FAFAFA;
+  --success: #34D399; --danger: #F87171; --warning: #FBBF24;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+html, body {
+  background: var(--bg); color: var(--text);
+  font-family: var(--font-sans); font-size: 15px; line-height: 1.55;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv11", "ss01", "ss03";
+  letter-spacing: -0.005em; overscroll-behavior-y: none;
+}
+body {
+  min-height: 100vh; min-height: 100dvh;
+  display: flex; flex-direction: column;
+  padding-top: var(--safe-top); padding-bottom: var(--safe-bottom);
+}
+button { font-family: inherit; font-size: inherit; cursor: pointer; background: none; border: none; color: inherit; }
+input, select { font-family: inherit; font-size: inherit; color: inherit; }
+.tnum { font-variant-numeric: tabular-nums; }
+
+.app {
+  flex: 1; display: flex; flex-direction: column;
+  max-width: 540px; width: 100%; margin: 0 auto;
+  padding: clamp(12px, 4vw, 20px) clamp(16px, 5vw, 28px) 48px;
+}
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 0 clamp(24px, 6vw, 40px);
+}
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 13px; letter-spacing: -0.01em; color: var(--text); }
+.brand-mark {
+  width: 28px; height: 28px; border-radius: var(--radius-sm);
+  background: var(--text); color: var(--bg);
+  display: grid; place-items: center;
+  font-size: 13px; font-weight: 700; font-family: var(--font-num); letter-spacing: -0.02em;
+}
+.brand-meta {
+  font-family: var(--font-mono); font-size: 11px; color: var(--dim);
+  text-transform: uppercase; letter-spacing: 0.06em; margin-left: 2px;
+}
+.icon-btn {
+  width: var(--tap); height: var(--tap); display: grid; place-items: center;
+  border-radius: var(--radius); color: var(--dim);
+  transition: background var(--duration) var(--ease), color var(--duration) var(--ease);
+  -webkit-tap-highlight-color: transparent;
+}
+.icon-btn:hover { background: var(--surface-2); color: var(--text); }
+.icon-btn:active { background: var(--surface-3); }
+.icon-btn svg { width: 18px; height: 18px; }
+
+.hero { margin-bottom: clamp(28px, 7vw, 40px); }
+.hero-eyebrow {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.12em; color: var(--dim);
+  margin-bottom: 14px; display: inline-flex; align-items: center; gap: 8px;
+}
+.hero-eyebrow::before { content: ""; width: 18px; height: 1px; background: var(--border-strong); }
+.hero h1 {
+  font-size: clamp(28px, 7.5vw, 36px); font-weight: 800;
+  letter-spacing: -0.035em; line-height: 1.05; margin-bottom: 12px; color: var(--text);
+}
+.hero p { font-size: clamp(14px, 3.8vw, 15px); color: var(--dim); max-width: 40ch; line-height: 1.6; }
+
+.holiday-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: clamp(40px, 10vw, 56px) clamp(20px, 6vw, 32px) clamp(32px, 8vw, 44px);
+  text-align: center; margin-bottom: 16px;
+  position: relative; overflow: hidden;
+}
+.holiday-card::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--text), transparent); opacity: 0.3;
+}
+.holiday-card.weekend::before {
+  background: linear-gradient(90deg, transparent, var(--success), transparent); opacity: 0.5;
+}
+.holiday-eyebrow {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.14em; color: var(--dim);
+  margin-bottom: 12px;
+}
+.holiday-card.weekend .holiday-eyebrow { color: var(--success); }
+
+.holiday-name {
+  font-family: var(--font-sans);
+  font-size: clamp(22px, 6vw, 28px); font-weight: 700;
+  letter-spacing: -0.03em; margin-bottom: 6px; color: var(--text);
+}
+.holiday-date {
+  font-family: var(--font-mono); font-size: 12px; color: var(--dim);
+  letter-spacing: 0.06em; margin-bottom: 24px;
+}
+
+.countdown-time {
+  font-family: var(--font-num);
+  font-size: clamp(40px, 13vw, 60px);
+  font-weight: 700; letter-spacing: -0.04em; line-height: 0.95;
+  font-variant-numeric: tabular-nums; margin-bottom: 16px; color: var(--text);
+}
+
+.countdown-biz {
+  font-family: var(--font-mono); font-size: 12px;
+  color: var(--dim); letter-spacing: 0.05em;
+}
+.countdown-biz strong {
+  font-family: var(--font-num); color: var(--text); font-weight: 700;
+}
+
+.progress-wrap {
+  margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border);
+}
+.progress-meta {
+  display: flex; justify-content: space-between;
+  font-family: var(--font-mono); font-size: 10px; color: var(--dim-2);
+  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;
+}
+.progress-bar {
+  height: 4px; background: var(--surface-2); border-radius: 2px;
+  overflow: hidden; position: relative;
+}
+.progress-fill {
+  position: absolute; top: 0; left: 0; bottom: 0;
+  background: var(--text); transition: width 400ms var(--ease); border-radius: 2px;
+}
+.holiday-card.weekend .progress-fill { background: var(--success); }
+
+.upcoming-list {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); margin-bottom: 16px; overflow: hidden;
+}
+.upcoming-head {
+  padding: 12px 16px; font-family: var(--font-mono); font-size: 10px;
+  color: var(--dim); text-transform: uppercase; letter-spacing: 0.1em;
+  border-bottom: 1px solid var(--border); background: var(--surface-2);
+}
+.upcoming-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 16px; border-bottom: 1px solid var(--border);
+}
+.upcoming-item:last-child { border-bottom: none; }
+.upcoming-name { font-size: 13px; font-weight: 500; color: var(--text); }
+.upcoming-meta {
+  font-family: var(--font-mono); font-size: 11px; color: var(--dim);
+  letter-spacing: 0.02em; font-variant-numeric: tabular-nums;
+}
+.upcoming-days {
+  font-family: var(--font-num); font-size: 14px; font-weight: 700;
+  color: var(--text); font-variant-numeric: tabular-nums;
+}
+
+.btn {
+  width: 100%; min-height: 52px; padding: 0 20px;
+  border-radius: var(--radius); font-size: 15px; font-weight: 600;
+  letter-spacing: -0.01em;
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  transition: background var(--duration) var(--ease), border-color var(--duration) var(--ease), color var(--duration) var(--ease), transform 80ms var(--ease);
+  user-select: none; -webkit-tap-highlight-color: transparent;
+  font-family: var(--font-sans);
+}
+.btn:active { transform: scale(0.985); }
+.btn-primary { background: var(--text); color: var(--bg); }
+.btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--surface-2); border-color: var(--border-strong); }
+.btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+
+.options-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px;
+}
+.toggle {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 14px;
+  display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: border-color var(--duration) var(--ease);
+}
+.toggle:hover { border-color: var(--border-strong); }
+.toggle[aria-pressed="true"] { border-color: var(--text); box-shadow: inset 0 0 0 1px var(--text); }
+.toggle-label {
+  font-family: var(--font-mono); font-size: 10px; color: var(--dim);
+  text-transform: uppercase; letter-spacing: 0.08em; font-weight: 500;
+}
+.toggle-val {
+  font-family: var(--font-num); font-size: 13px; font-weight: 700; color: var(--text);
+}
+
+.footer {
+  margin-top: auto; padding-top: 40px;
+  font-family: var(--font-mono); font-size: 10px; color: var(--dim-2);
+  text-align: center; text-transform: uppercase; letter-spacing: 0.1em;
+}
+.footer a { color: var(--dim); text-decoration: none; transition: color var(--duration) var(--ease); }
+.footer a:hover { color: var(--text); }
+
+.toast {
+  position: fixed; bottom: calc(20px + var(--safe-bottom)); left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--text); color: var(--bg);
+  padding: 12px 18px; border-radius: var(--radius);
+  font-size: 13px; font-weight: 500; letter-spacing: -0.005em;
+  box-shadow: var(--shadow-lg); opacity: 0;
+  transition: opacity 220ms var(--ease), transform 220ms var(--ease);
+  z-index: 100; pointer-events: none; max-width: calc(100vw - 32px);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+@media (max-width: 768px) { .app { max-width: 100%; } }
+@media (max-width: 480px) {
+  :root { --tap: 52px; }
+  body { font-size: 14px; }
+  .app { padding: 12px 16px 40px; }
+  .topbar { padding: 2px 0 22px; }
+  .brand { font-size: 12px; gap: 8px; }
+  .brand-mark { width: 26px; height: 26px; font-size: 11px; }
+  .hero { margin-bottom: 26px; }
+  .hero h1 { font-size: clamp(26px, 8.5vw, 32px); letter-spacing: -0.03em; }
+  .holiday-card { padding: 36px 18px 32px; border-radius: 8px; }
+  .countdown-time { font-size: clamp(36px, 12vw, 48px); }
+  .holiday-name { font-size: clamp(20px, 5.5vw, 24px); }
+  .btn { min-height: 54px; font-size: 14.5px; padding: 0 16px; }
+  .btn-row { gap: 6px; }
+  .footer { padding-top: 32px; font-size: 9px; }
+}
+@media (max-width: 360px) {
+  .hero h1 { font-size: 24px; }
+  .countdown-time { font-size: 34px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+@media (hover: none) {
+  .btn-primary:hover { background: var(--text); }
+  .btn-secondary:hover { background: var(--surface); border-color: var(--border); }
+  .toggle:hover { border-color: var(--border); }
+  .icon-btn:hover { background: transparent; color: var(--dim); }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">休</div>
+      <span>Next Holiday</span>
+      <span class="brand-meta">v1.0</span>
+    </div>
+    <button class="icon-btn" id="themeToggle" aria-label="テーマ切替">
+      <svg id="iconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      <svg id="iconMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" hidden><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+  </header>
+
+  <div class="hero">
+    <div class="hero-eyebrow">Weekend + Holidays · JP 2026-2027</div>
+    <h1>次の休みまで、<br>あと何時間？</h1>
+    <p>次の土日・祝日までの残り時間と、残り営業時間を秒刻みで表示。どこまで頑張れば休めるか、数字で見えます。</p>
+  </div>
+
+  <div class="options-row">
+    <button type="button" class="toggle" id="modeToggle" aria-pressed="false">
+      <span class="toggle-label">休みに含める</span>
+      <span class="toggle-val" id="modeVal">土日＋祝日</span>
+    </button>
+    <button type="button" class="toggle" id="hoursToggle" aria-pressed="false">
+      <span class="toggle-label">就業時間</span>
+      <span class="toggle-val" id="hoursVal">9-18</span>
+    </button>
+  </div>
+
+  <div class="holiday-card" id="holidayCard">
+    <div class="holiday-eyebrow" id="holidayEyebrow">次の休み</div>
+    <div class="holiday-name" id="holidayName">土曜日</div>
+    <div class="holiday-date" id="holidayDate">2026/04/25 (土)</div>
+    <div class="countdown-time tnum" id="countdownTime">00:00:00</div>
+    <div class="countdown-biz">
+      残り営業時間 <strong class="tnum" id="bizHours">0h</strong>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-meta">
+        <span>今週の進捗</span>
+        <span class="tnum" id="weekPct">0%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="weekFill" style="width:0%"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="upcoming-list">
+    <div class="upcoming-head">今後の祝日</div>
+    <div id="upcomingBody"></div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-secondary" id="shareBtn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+      Xでシェア
+    </button>
+    <button class="btn btn-secondary" id="copyBtn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      コピー
+    </button>
+  </div>
+
+  <footer class="footer">
+    <a href="https://x.com/otsu_dev" target="_blank" rel="noopener">100 Web Apps Challenge · #19</a>
+  </footer>
+</div>
+
+<div class="toast" id="toast">コピーしました</div>
+
+<script>
+(() => {
+  'use strict';
+
+  // 日本の祝日（2026-2027、公式発表ベース。振替休日・国民の休日含む）
+  const HOLIDAYS = {
+    '2026-01-01': '元日',
+    '2026-01-12': '成人の日',
+    '2026-02-11': '建国記念の日',
+    '2026-02-23': '天皇誕生日',
+    '2026-03-20': '春分の日',
+    '2026-04-29': '昭和の日',
+    '2026-05-03': '憲法記念日',
+    '2026-05-04': 'みどりの日',
+    '2026-05-05': 'こどもの日',
+    '2026-05-06': '振替休日',
+    '2026-07-20': '海の日',
+    '2026-08-11': '山の日',
+    '2026-09-21': '敬老の日',
+    '2026-09-22': '国民の休日',
+    '2026-09-23': '秋分の日',
+    '2026-10-12': 'スポーツの日',
+    '2026-11-03': '文化の日',
+    '2026-11-23': '勤労感謝の日',
+    '2027-01-01': '元日',
+    '2027-01-11': '成人の日',
+    '2027-02-11': '建国記念の日',
+    '2027-02-23': '天皇誕生日',
+    '2027-03-21': '春分の日',
+    '2027-03-22': '振替休日',
+    '2027-04-29': '昭和の日',
+    '2027-05-03': '憲法記念日',
+    '2027-05-04': 'みどりの日',
+    '2027-05-05': 'こどもの日',
+    '2027-07-19': '海の日',
+    '2027-08-11': '山の日',
+    '2027-09-20': '敬老の日',
+    '2027-09-23': '秋分の日',
+    '2027-10-11': 'スポーツの日',
+    '2027-11-03': '文化の日',
+    '2027-11-23': '勤労感謝の日',
+  };
+  const WD = ['日','月','火','水','木','金','土'];
+
+  const state = {
+    includeHolidays: true,
+    workStart: 9,
+    workEnd: 18,
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const toast = $('toast');
+  const showToast = (msg) => {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => toast.classList.remove('show'), 1800);
+  };
+
+  const pad = (n) => String(n).padStart(2, '0');
+  const toKey = (d) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const fmtDate = (d) => `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} (${WD[d.getDay()]})`;
+  const fmt = (n) => Math.floor(n).toLocaleString('ja-JP');
+
+  // ===== Theme =====
+  const themeToggle = $('themeToggle');
+  const iconSun = $('iconSun');
+  const iconMoon = $('iconMoon');
+  const applyTheme = (t) => {
+    document.documentElement.setAttribute('data-theme', t);
+    iconSun.hidden = t === 'dark';
+    iconMoon.hidden = t !== 'dark';
+    document.querySelector('meta[name="theme-color"]').setAttribute('content', t === 'dark' ? '#0A0A0A' : '#F5F5F4');
+  };
+  const savedTheme = localStorage.getItem('nhc-theme') ||
+    (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  applyTheme(savedTheme);
+  themeToggle.addEventListener('click', () => {
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('nhc-theme', next);
+    applyTheme(next);
+  });
+
+  // ===== Options =====
+  const modeToggle = $('modeToggle');
+  const modeVal = $('modeVal');
+  const hoursToggle = $('hoursToggle');
+  const hoursVal = $('hoursVal');
+
+  const HOUR_OPTIONS = [
+    { s: 9, e: 18, label: '9-18' },
+    { s: 10, e: 19, label: '10-19' },
+    { s: 9, e: 17, label: '9-17' },
+    { s: 8, e: 17, label: '8-17' },
+  ];
+  let hourIdx = 0;
+
+  const saved = (() => {
+    try { return JSON.parse(localStorage.getItem('nhc-settings') || '{}'); } catch { return {}; }
+  })();
+  if (typeof saved.includeHolidays === 'boolean') state.includeHolidays = saved.includeHolidays;
+  if (typeof saved.hourIdx === 'number') {
+    hourIdx = Math.max(0, Math.min(HOUR_OPTIONS.length-1, saved.hourIdx));
+  }
+  state.workStart = HOUR_OPTIONS[hourIdx].s;
+  state.workEnd = HOUR_OPTIONS[hourIdx].e;
+  modeVal.textContent = state.includeHolidays ? '土日＋祝日' : '土日のみ';
+  hoursVal.textContent = HOUR_OPTIONS[hourIdx].label;
+
+  const saveSettings = () => {
+    try {
+      localStorage.setItem('nhc-settings', JSON.stringify({
+        includeHolidays: state.includeHolidays,
+        hourIdx,
+      }));
+    } catch {}
+  };
+
+  modeToggle.addEventListener('click', () => {
+    state.includeHolidays = !state.includeHolidays;
+    modeVal.textContent = state.includeHolidays ? '土日＋祝日' : '土日のみ';
+    saveSettings();
+    tick();
+  });
+  hoursToggle.addEventListener('click', () => {
+    hourIdx = (hourIdx + 1) % HOUR_OPTIONS.length;
+    state.workStart = HOUR_OPTIONS[hourIdx].s;
+    state.workEnd = HOUR_OPTIONS[hourIdx].e;
+    hoursVal.textContent = HOUR_OPTIONS[hourIdx].label;
+    saveSettings();
+    tick();
+  });
+
+  // ===== Holiday logic =====
+  const isOff = (d) => {
+    const day = d.getDay();
+    if (day === 0 || day === 6) return true;
+    if (state.includeHolidays && HOLIDAYS[toKey(d)]) return true;
+    return false;
+  };
+  const offName = (d) => {
+    const day = d.getDay();
+    const h = HOLIDAYS[toKey(d)];
+    if (h && state.includeHolidays) return h;
+    if (day === 0) return '日曜日';
+    if (day === 6) return '土曜日';
+    return '';
+  };
+
+  // 次の休みの開始日時を返す（既に休み中なら「次の次」の連休以降の休みを探す仕様ではなく、今日の休みをそのまま対象にする）
+  const findNextOff = (from) => {
+    // 今日休みならその日そのまま
+    const today = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+    if (isOff(today)) return today;
+    // 次の休み
+    for (let i = 1; i <= 400; i++) {
+      const d = new Date(from.getFullYear(), from.getMonth(), from.getDate() + i);
+      if (isOff(d)) return d;
+    }
+    return null;
+  };
+
+  // 営業時間分だけカウント（平日の 9-18）
+  const countBizHours = (fromMs, toMs) => {
+    if (toMs <= fromMs) return 0;
+    let total = 0;
+    const from = new Date(fromMs);
+    const to = new Date(toMs);
+    // ms単位で各日ループ
+    const cursor = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+    while (cursor <= to) {
+      if (!isOff(cursor)) {
+        const dayStart = new Date(cursor); dayStart.setHours(state.workStart, 0, 0, 0);
+        const dayEnd = new Date(cursor); dayEnd.setHours(state.workEnd, 0, 0, 0);
+        const s = Math.max(dayStart.getTime(), from.getTime());
+        const e = Math.min(dayEnd.getTime(), to.getTime());
+        if (e > s) total += (e - s);
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return total / 3600000;
+  };
+
+  const card = $('holidayCard');
+  const eyebrow = $('holidayEyebrow');
+  const nameEl = $('holidayName');
+  const dateEl = $('holidayDate');
+  const timeEl = $('countdownTime');
+  const bizEl = $('bizHours');
+  const weekPct = $('weekPct');
+  const weekFill = $('weekFill');
+  const upcomingBody = $('upcomingBody');
+
+  const fmtHMS = (ms) => {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    const d = Math.floor(s / 86400);
+    const h = Math.floor((s % 86400) / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    if (d > 0) return `${d}日 ${pad(h)}:${pad(m)}:${pad(sec)}`;
+    return `${pad(h)}:${pad(m)}:${pad(sec)}`;
+  };
+
+  function tick() {
+    const now = new Date();
+    const nextOff = findNextOff(now);
+    if (!nextOff) return;
+    const nextOffStart = new Date(nextOff.getFullYear(), nextOff.getMonth(), nextOff.getDate());
+    const diffMs = nextOffStart - now;
+
+    if (diffMs <= 0 && isOff(new Date(now.getFullYear(), now.getMonth(), now.getDate()))) {
+      // 今日が休み
+      card.classList.add('weekend');
+      eyebrow.textContent = '今日は休み';
+      const name = offName(now) || '休日';
+      nameEl.textContent = name;
+      dateEl.textContent = fmtDate(now);
+      // 休みの終わり（翌営業日 00:00）までのカウントダウン
+      const endCursor = new Date(now);
+      while (isOff(endCursor)) {
+        endCursor.setDate(endCursor.getDate() + 1);
+      }
+      endCursor.setHours(0, 0, 0, 0);
+      const remainMs = endCursor - now;
+      timeEl.textContent = fmtHMS(remainMs);
+      bizEl.textContent = '営業時間ゼロ';
+      weekPct.textContent = '100%';
+      weekFill.style.width = '100%';
+    } else {
+      card.classList.remove('weekend');
+      eyebrow.textContent = '次の休み';
+      const name = offName(nextOff);
+      nameEl.textContent = name;
+      dateEl.textContent = fmtDate(nextOff);
+      timeEl.textContent = fmtHMS(diffMs);
+      const biz = countBizHours(now.getTime(), nextOffStart.getTime());
+      bizEl.textContent = biz.toFixed(1) + 'h';
+
+      // 週の進捗（月曜0時〜次の休み開始まで）
+      const weekStart = new Date(now);
+      const dow = (now.getDay() + 6) % 7; // Mon=0
+      weekStart.setDate(now.getDate() - dow);
+      weekStart.setHours(0, 0, 0, 0);
+      const total = nextOffStart - weekStart;
+      const elapsed = now - weekStart;
+      const pct = total > 0 ? Math.max(0, Math.min(100, (elapsed / total) * 100)) : 0;
+      weekPct.textContent = pct.toFixed(1) + '%';
+      weekFill.style.width = pct.toFixed(2) + '%';
+    }
+
+    renderUpcoming(now);
+  }
+
+  function renderUpcoming(now) {
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const list = Object.keys(HOLIDAYS)
+      .map(k => ({ key: k, date: new Date(k + 'T00:00:00'), name: HOLIDAYS[k] }))
+      .filter(it => it.date >= today)
+      .slice(0, 5);
+    if (list.length === 0) {
+      upcomingBody.innerHTML = '<div class="upcoming-item"><span class="upcoming-meta">データ範囲外です</span></div>';
+      return;
+    }
+    upcomingBody.innerHTML = list.map(it => {
+      const days = Math.round((it.date - today) / 86400000);
+      return `<div class="upcoming-item">
+        <div>
+          <div class="upcoming-name">${it.name}</div>
+          <div class="upcoming-meta">${fmtDate(it.date)}</div>
+        </div>
+        <div class="upcoming-days">${days === 0 ? '今日' : `+${days}日`}</div>
+      </div>`;
+    }).join('');
+  }
+
+  tick();
+  setInterval(tick, 1000);
+
+  // ===== Share =====
+  const buildShareText = () => {
+    const now = new Date();
+    const nextOff = findNextOff(now);
+    if (!nextOff) return '次の休み情報がありません。';
+    const nextOffStart = new Date(nextOff.getFullYear(), nextOff.getMonth(), nextOff.getDate());
+    const diffMs = nextOffStart - now;
+    const name = offName(nextOff);
+    if (diffMs <= 0) {
+      return `今日は ${name}。ゆっくりしましょう。\n\n#次の休みまでカウントダウン`;
+    }
+    const biz = countBizHours(now.getTime(), nextOffStart.getTime());
+    const d = Math.floor(diffMs / 86400000);
+    const h = Math.floor((diffMs % 86400000) / 3600000);
+    return `次の休み「${name}」まであと ${d}日${h}時間 / 営業時間 ${biz.toFixed(1)}h。\n\n#次の休みまでカウントダウン`;
+  };
+
+  $('shareBtn').addEventListener('click', () => {
+    const text = buildShareText();
+    const url = location.origin;
+    window.open(
+      `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
+      '_blank',
+      'noopener'
+    );
+  });
+  $('copyBtn').addEventListener('click', async () => {
+    const text = buildShareText() + '\n' + location.origin;
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast('コピーしました');
+    } catch {
+      showToast('コピー失敗');
+    }
+  });
+})();
+</script>
+</body>
+</html>
